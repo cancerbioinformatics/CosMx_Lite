@@ -1,3 +1,4 @@
+# CosMx-Lite
 Authors: Béibhinn O Hora, Roman Laddach, Jelmar Quist, Rosamund Nuamah, Anita Grigoriadis, Ciro Chiappini
 Date: 15-Apr-2024
 
