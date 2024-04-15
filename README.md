@@ -1,18 +1,5 @@
---- 
-title: "Under the Hood of CosMx"
-author: Béibhinn O Hora, Dr. Roman Laddach, Dr. Jelmar Quist, Rosamund Nuamah, Dr.
-  Anita Grigoriadis, Dr. Ciro Chiappini
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    df_print: paged
-documentclass: html_book
-bibliography:
-- book.bib
-- packages.bib
-subtitle: A Practical Guide
----
-
+Authors: Béibhinn O Hora, Roman Laddach, Jelmar Quist, Rosamund Nuamah, Anita Grigoriadis, Ciro Chiappini
+Date: 15-Apr-2024
 
 
 ![CoxMx Analysis with the *Spatial Biology Facility* at King's College London](images/cosmx_lab_.png)
