@@ -54,13 +54,6 @@ We would suggest reading the following articles for insights into spatial transc
 There are also several resources available on https://university.nanostring.com, which can help you further understand how CosMx SMI works - from laboratory procedures to data analysis considerations.
 
 
-## On-going work and contributions
-
-At the heart of this guide is a commitment to constant improvement. We strive to consistently enhance and broaden the scope of our guide, and welcome our readers to provide constructive feedback. If you're a spatial transcriptomics enthusiast, and wish to participate or share your insights, please reach out to us via our Github Repository ([link to be inserted]). Your input is highly valued.
-
-
-
-
 # Background
 
 ## Transcriptomics
@@ -106,8 +99,8 @@ Spatial transcriptomic technologies are a state of rapid evolution, marked by no
 
 These technologies can be categorised into three primary groups: 
 
-1. **In Situ Hybridization (ISH): ** Profiles the transcriptome through the hybridization of complementary probes that bind to mRNA, enabling the subsequent reading of fluorescent labels for detection and analysis. Examples: MERFISH, CosMx SMI.
-2. **In Situ Sequencing (ISS): ** Enable direct RNA sequencing within the tissue using padlock probes and the rolling-circle amplification (RCA) process. Examples: STARmap, HybISS, Xenium
+1. **In Situ Hybridization (ISH):** Profiles the transcriptome through the hybridization of complementary probes that bind to mRNA, enabling the subsequent reading of fluorescent labels for detection and analysis. Examples: MERFISH, CosMx SMI.
+2. **In Situ Sequencing (ISS):** Enable direct RNA sequencing within the tissue using padlock probes and the rolling-circle amplification (RCA) process. Examples: STARmap, HybISS, Xenium
 3. **Next Generation Sequencing (NGS)**: Compartmentalizes tissue section and the entire transcriptome of each section is uniquely barcoded and sequenced. Examples: Visium, GeoMx
 
 
@@ -339,184 +332,10 @@ The data used in this tutorial is derived from a lymph node sample (FFPE) obtain
 
 Tissue was obtained through the King’s Health Partner’s Breast Cancer Tissue and Data Bank. Research ethics approval was obtained from the local research ethics committee (KHP Cancer Biobank REC ref 18/EE/0025).
 
-Relevant files are available for download from our GitHub here.
+Relevant files are available for download from the [input](./input) and [scripts](./scripts) folder in the main respository.
 
 
 ![](images/sample_zoom.png)
-
-# Pre-processing data 
-
-## Setting up R enviroment 
-
-Set up your environment to avoid unexpected errors.
-
-```{r, results='hide'}
-## Clean environment
-rm(list = ls(all.names = TRUE)) 
-gc()
-options(max.print = .Machine$integer.max, scipen = 999, stringsAsFactors = F, dplyr.summarise.inform = F) 
-```
-
-```{r}
-## Set seed for reproducibility
-set.seed(1234)
-```
-
-```{r, results='hide',message=FALSE}
-## Load libraries 
-library("dplyr")
-library("Seurat") # Version 5 
-library("patchwork")
-library("ggplot2")
-```
-
-
-## Reading in data 
-
-### Field of View (FOV) positions
-
-FOV positions contains information about FOV x/y coordinates:  
-```{r}
-fov_positions = read.csv("input/fov_positions_file.csv", header = TRUE)
-head(fov_positions)
-```
-
-### Metadata
-
-Metadata has information about:
-- the origin of the cell (fov, unique cell id)
-- physical properties of the cell (area, aspect ratio, width, height)
-- location of the cell centroid within each FOV (center X/Y local) and global position (center X/Y global)
-- information about the protein staining (min/max intensity) - the type of protein my be specific to each experiment
-
-```{r}
-metadata = read.csv("input/metadata_file.csv", header = TRUE)
-head(metadata)
-```
-
-## Expression matrix
-
-Expression matrix contains raw counts of gene expression per cell. It also includes information about the negative probes levels (`NegPrb`).   
-```{r}
-exprMat <- read.csv("input/exprMat_file.csv", header = TRUE)
-exprMat[1:5,1:5]
-```
-
-## Pre-processing data
-
-```{r} 
-## Prepare fov_positions_file.csv 
-colnames(fov_positions)[which(colnames(fov_positions)=="FOV")] = "fov" # all files use `fov` for FOVs
-fov_positions$X_px = fov_positions$X_mm*1000/0.1202809 # converting mm to px 
-fov_positions$Y_px = fov_positions$Y_mm*1000/0.1202809 # converting mm to px 
-
-write.table(fov_positions, file = "fov_positions_file.csv", quote = TRUE, sep = ",", row.names = TRUE)
-```
-
-```{r}
-## Prepare exprMat_file.csv
-rownames(exprMat) = exprMat$cell # cell contains information about slide_fov_cell as a good unique identifier for cells
-colnames(exprMat) = gsub("Negative", "NegPrb", fixed = TRUE, colnames(exprMat)) # changing the name 
-exprMat = exprMat[,grep("SystemControl", colnames(exprMat), invert = TRUE)] # removing columns which contain SystemControl probes
-
-exprMat$fov = NULL 
-exprMat$cell_ID = NULL
-exprMat$cell = NULL
-
-write.table(exprMat, file = "exprMat_file.csv", quote = TRUE, sep = ",", row.names = TRUE)
-```
-
-
-## Cell number and order
-It is critical to ensure that the metadata and the expression matrix contain the same number of cells and they follow the same order.
-
-### Number of cells  
-```{r}
-nrow(metadata) == nrow(exprMat) # comparing the number of rows
-```
-If the number is not correct, it may be due to some FOVs being removed due at the export stage, which most commonly happens if the number of detected cells is 0.
-
-### Order of cells  
-```{r}
-identical(rownames(metadata), rownames(exprMat)) # comparing the order based on the unique cell ID
-```
-
-If the number of cells is identical, but the order is not, a simple re-ordering should update it:
-```{r}
-exprMat = exprMat[rownames(metadata),]
-identical(rownames(metadata), rownames(exprMat)) # comparing the order based on the unique cell ID
-```
-
-```{r}
-# Saving metadata file
-write.table(metadata, file = "metadata_file.csv", quote = TRUE, sep = ",", row.names = TRUE)
-```
-
-
-# Overview of data 
-
-A script to investigate CosMx data using flat file exports. The script allows for:
-- tissue/area annotation according to the FOV
-- visualization of cell centroids across whole slide and subsections
-
-This allows for the creation of Seurat object from expMat and metadata files only (without using the cell boundaries and tissue image). 
-
-<insert section on creating seurat object>
-
-## FOVs and separation into tissues  
-The visualization shows which FOVs belong to which fragment of the tissue. 
-```{r, fig.width = 4, fig.height = 6}
-ggplot(fovPositions, aes(x=X_mm, y=Y_mm, label=fov)) + 
-  geom_point(size=4, colour="red", alpha=0.3, shape=15) + 
-  theme_minimal() + 
-  geom_text(size=3) +
-  ggtitle("FOV position")
-```
-
-Only certain FOVs will be used for the tutorial/analysis due to a high number of cells.  
-- area_01 - upper left corner FOV15-18 + FOV24-44
-- area_02 - upper/middle right FOV8-13 + FOV45-61 (without 57)
-- area_03 - remaining FOVs
-
-```{r, fig.width = 4, fig.height = 6}
-fovPositions = fovPositions %>% mutate(region = case_when(
-  fov %in% c(15:18, 24:44) ~ "area_01",
-  fov %in% c(8:13, 45:56, 58:61) ~ "area_02",
-  fov %in% c(1:7, 14, 19:23, 57, 62:63) ~ "area_03"
-))
-
-ggplot(fovPositions, aes(x=X_mm, y=Y_mm, label=fov, colour=region)) + 
-  geom_point(size=4, alpha=0.3, shape=15) + 
-  theme_minimal() + 
-  geom_text(size=3, colour="black") +
-  ggtitle("FOV position")
-```
-
-Adding this information to metadata, as this will be used for Seurat object creation.  
-```{r, fig.width = 6, fig.height = 6}
-metadata = metadata %>% mutate(region = case_when(
-  fov %in% c(15:18, 24:44) ~ "area_01",
-  fov %in% c(8:13, 45:56, 58:61) ~ "area_02",
-  fov %in% c(1:7, 14, 19:23, 57, 62:63) ~ "area_03"
-))
-
-ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=region)) + 
-  geom_point(size=0.1) + theme_minimal()
-```
-
-Saving updated files in RDS format.
-```{r}
-saveRDS(expMat, "../input/GEX_only_genes_and_NegPrb_for_Seurat.RDS")
-saveRDS(metadata, "../input/metadata_for_Seurat.RDS")
-```
-
-
-# Quality Control
-
-
-
-
-
 
 
 
@@ -525,31 +344,21 @@ saveRDS(metadata, "../input/metadata_for_Seurat.RDS")
 ## About us 
 
 
+
 ## Services we offer
+
+
 
 ## Contact us
 
-## Licence for E-Book
+We strive to consistently enhance and broaden the scope of our guide, and welcome our readers to provide constructive feedback. If you're a spatial transcriptomics enthusiast, and wish to participate or share your insights, please reach out to us at roman.1.laddach@kcl.ac.uk / beibhinn.1.ohora@kcl.ac.uk. Your input is highly valued.
+
+If you are interested in finding out more about our facility, please contact us at SBF@kcl.ac.uk.
+
+
+## Licence 
 
 MIT?
-
-
-```{r}
-sessionInfo()
-```
-
-
-```{r eval=FALSE}
-bookdown::serve_book()
-```
-
-
-```{r include=FALSE}
-# automatically create a bib database for R packages
-knitr::write_bib(c(
-  .packages(), 'bookdown', 'knitr', 'rmarkdown'
-), 'packages.bib')
-```
 
 
 
