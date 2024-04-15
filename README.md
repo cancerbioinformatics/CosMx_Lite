@@ -12,8 +12,6 @@ Nanostring’s CosMx Spatial Molecular Imager (SMI) allows researchers to gain i
 The most common approaches for CosMx data analysis involve the use of a high-performance computing (HPC) cluster, thus limiting access to analysis. Data can also be analysed within Nanostring's spatial informatics platform AtoMx, however there are limitations regarding integration with additional tools and pipelines needed for downstream analysis. 
 
 To address this, we at the Spatial Biology Facility have created CosMx-Lite, a practical guide that offers an accessible and lightweight approach to exploring CosMx data. We use flat file exports, remove polygon and image data, representing cells as points using the centroids. The CosMx-Lite pipeline uses the R statistical programming language and the Seurat5 package as a base. We expand upon it by integrating other R tools to facilitate a more tailored downstream analysis. 
-<img width="5991" alt="image" src="https://github.com/cancerbioinformatics/CosMx_Lite/assets/101347653/220682bb-cfe3-401e-8412-1570aa8e24da">
-
 
 ## Guide Highlights
 
