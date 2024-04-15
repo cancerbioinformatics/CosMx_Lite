@@ -156,14 +156,13 @@ More detailed information about the CosMx SMI chemistry and workflow can be foun
 ## What is AtoMx?
 
 Data generated from sample processing using CosMx SMI is stored on the AtoMx Spatial Informatics Platform (SIP), a cloud-based solution developed by NanoString and hosted on Amazon Web Services (AWS). Access to AtoMx SIP is facilitated through a web browser (Google Chrome works best!) using a secure login link provided by NanoString's identity provider, Okta. This allows users to securely access and manage their data within the platform using a standard web browser.
-[AtoMx Spatial Informatics Platform Login Page](images/AtoMx.jpeg)
 
-[](images/AtoMx.jpeg)
+![](images/AtoMx.jpeg)
 
 
 AtoMx SIP is designed to allow researchers **without** extensive coding experience to analyse and visualise their spatial multiomics data with the benefit of being all on one user-friendly platform. This eliminates a lot of data management concerns, as CosMx data can be analysed, stored and computed on the cloud as opposed to hosting analysis in-house or locally on a hard drive. 
 
-AtoMx SIP offers a range of NanoString-configured modules and analysis pipelines tailored for processing data and deriving meaningful insights. On the [Nanostring University](https://university.nanostring.com/page/document-library) website, the AtoMx SIP user manual can be found. This contains more detailed instructions for accessing and navigating the AtoMx SIP, as well as information about the available modules can be found. *As AtoMx SIP is consistently evolving and improving, we would recommend to check for updates for the latest versions and manuals available. *
+AtoMx SIP offers a range of NanoString-configured modules and analysis pipelines tailored for processing data and deriving meaningful insights. On the [Nanostring University](https://university.nanostring.com/page/document-library) website, the AtoMx SIP user manual can be found. This contains more detailed instructions for accessing and navigating the AtoMx SIP, as well as information about the available modules can be found. *As AtoMx SIP is consistently evolving and improving, we would recommend to check for updates for the latest versions and manuals available.*
 
 ![*AtoMx SIP Data Analysis Suite*](images/AtoMx1.jpeg)
 
