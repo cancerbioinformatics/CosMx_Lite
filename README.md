@@ -162,7 +162,7 @@ AtoMx SIP is designed to allow researchers **without** extensive coding experien
 
 AtoMx SIP offers a range of NanoString-configured modules and analysis pipelines tailored for processing data and deriving meaningful insights. On the [Nanostring University](https://university.nanostring.com/page/document-library) website, the AtoMx SIP user manual can be found. This contains more detailed instructions for accessing and navigating the AtoMx SIP, as well as information about the available modules can be found. *As AtoMx SIP is consistently evolving and improving, we would recommend to check for updates for the latest versions and manuals available. *
 
-![*AtoMx SIP Data Analysis Suite*](images/AtoMx1.png)
+![*AtoMx SIP Data Analysis Suite*](images/AtoMx1.jpeg)
 
 <br>
 
