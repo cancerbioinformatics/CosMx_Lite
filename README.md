@@ -229,7 +229,7 @@ Four main image file types are available, which are currently necessary to creat
 We suggest exploring the images within the CellOverlay folder, as they provide an overview of the cell mask and can assist in evaluating segmentation quality outside of AtoMx.   
 <br>
 
-![Overview of cell mask in FOV](images/segmentation_image1.png)
+![Overview of cell mask in FOV](images/segmentation_image1.jpeg)
 
 <br>
 
