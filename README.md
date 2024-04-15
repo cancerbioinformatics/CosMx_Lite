@@ -344,9 +344,11 @@ With a strong focus on producing accurate, reproducible data and the bioinformat
 ## Services we offer
 
 **NanoString CosMx SMI**
+
 The CosMx Spatial Molecular Imager (SMI) enables quantification and visualisation of of up to 6,000 RNAs and 64 validated proteins. This allows researcher to comprehensively map single cells within tissue environment.
 
 **NanoString GeoMx DSP**
+
 With the GeoMx Digital Spatial Profiler (DSP) researchers can perform transcriptome-wide profiling guided by morphological markers to shed light on tissue heterogeneity and the complexity of microenvironments.
 
 **Bioinformatics Analysis**
