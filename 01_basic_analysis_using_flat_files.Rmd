@@ -1,0 +1,115 @@
+---
+title: "R Notebook"
+output: html_notebook
+date: "08-Apr-2024"
+---
+
+# Introduction  
+A script to investigate CosMx data using flat file exports. The script allows for:
+- tissue/area annotation according to the FOV
+- visualization of cell centroids across whole slide and subsections
+
+Files have been pre-processed using `00_flat_file_preprocessing_v2.R` script.   
+Subsequent script allows for the creation of Seurat object from expMat and metadata files only (without using the cell boundaries and tissue image). 
+
+# Setup  
+## Libraries  
+```{r}
+library("dplyr") # data manipulation
+library("ggplot2") # visualizations
+```
+
+## Data  
+FOV positions contains information about FOV x/y coordinates in mm and px:  
+```{r}
+fovPositions = read.csv("../input/fov_positions_file.csv")
+head(fovPositions)
+```
+Metadata has information about:
+- the origin of the cell (fov, unique cell id)
+- physical properties of the cell (area, aspect ratio, width, height)
+- location of the cell centroid within each FOV (center X/Y local) and global position (center X/Y global)
+- information about the protein staining (min/max intensity) - the type of protein my be specific to each experiment
+
+```{r}
+metadata = read.csv("../input/metadata_file.csv")
+head(metadata)
+```
+
+Expression matrix contains raw counts of gene expression per cell. It also includes information about the negative probes levels (`NegPrb`).   
+```{r}
+expMat = read.csv("../input/exprMat_file.csv")
+expMat[1:5,1:5]
+```
+
+
+# Preprocessing  
+## Cell number and order  
+It is critical to ensure that the metadata and the expression matrix contain the same number of cells and they follow the same order.
+Number of cells  
+```{r}
+nrow(metadata) == nrow(expMat) # comparing the number of rows
+```
+If the number is not correct, it may be due to some FOVs being removed due at the export stage, which most commonly happens if the number of detected cells is 0.
+
+Order of cells  
+```{r}
+identical(rownames(metadata), rownames(expMat)) # comparing the order based on the unique cell ID
+```
+If the number of cells is identical, but the order is not, a simple re-ordering should update it:
+```{r}
+expMat = expMat[rownames(metadata),]
+identical(rownames(metadata), rownames(expMat)) # comparing the order based on the unique cell ID
+```
+
+
+## FOVs and separation into tissues  
+The visualization shows which FOVs belong to which fragment of the tissue. 
+```{r, fig.width = 4, fig.height = 6}
+ggplot(fovPositions, aes(x=X_mm, y=Y_mm, label=fov)) + 
+  geom_point(size=4, colour="red", alpha=0.3, shape=15) + 
+  theme_minimal() + 
+  geom_text(size=3) +
+  ggtitle("FOV position")
+```
+Only certain FOVs will be used for the tutorial/analysis due to a high number of cells.  
+- area_01 - upper left corner FOV15-18 + FOV24-44
+- area_02 - upper/middle right FOV8-13 + FOV45-61 (without 57)
+- area_03 - remaining FOVs
+
+```{r, fig.width = 4, fig.height = 6}
+fovPositions = fovPositions %>% mutate(region = case_when(
+  fov %in% c(15:18, 24:44) ~ "area_01",
+  fov %in% c(8:13, 45:56, 58:61) ~ "area_02",
+  fov %in% c(1:7, 14, 19:23, 57, 62:63) ~ "area_03"
+))
+
+ggplot(fovPositions, aes(x=X_mm, y=Y_mm, label=fov, colour=region)) + 
+  geom_point(size=4, alpha=0.3, shape=15) + 
+  theme_minimal() + 
+  geom_text(size=3, colour="black") +
+  ggtitle("FOV position")
+```
+Adding this information to metadata, as this will be used for Seurat object creation.  
+```{r, fig.width = 6, fig.height = 6}
+metadata = metadata %>% mutate(region = case_when(
+  fov %in% c(15:18, 24:44) ~ "area_01",
+  fov %in% c(8:13, 45:56, 58:61) ~ "area_02",
+  fov %in% c(1:7, 14, 19:23, 57, 62:63) ~ "area_03"
+))
+
+ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=region)) + 
+  geom_point(size=0.1) + theme_minimal()
+```
+
+Saving updated files in RDS format.
+```{r}
+saveRDS(expMat, "../input/GEX_only_genes_and_NegPrb_for_Seurat.RDS")
+saveRDS(metadata, "../input/metadata_for_Seurat.RDS")
+```
+
+# Session information  
+```{r}
+sessionInfo()
+```
+
