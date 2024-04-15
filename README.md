@@ -127,7 +127,6 @@ For this guide we will be focusing on the ISH-method from Nanostring's CosMx SMI
 
 
 
-
 # CosMx SMI
 
 ## Overview
@@ -214,7 +213,7 @@ The main export function can be used to export to select and export relevant dat
 Relevant data can be exported to an AWS S3 bucket by using a custom export function (e.g. the **flat file export module** or the **CosMx DA export module**) and including the path to the target AWS S3 bucket. The AWS Command Line Interface (CLI) tool can be used to quickly and easily access and download the data on the command line (for download to a HPC cluster for example). <br>
 
 
-![*Running flat file export module*](images/ff_export1.png)
+![*Running flat file export module*](./images/ff_export1.png)
 <br>
 
 # Relevant data exports 
@@ -296,7 +295,6 @@ We recommend pre-processing the raw files to enhance the downstream analysis. Ou
 
 ![*Flat files overview*](images/file_description.png)
 
-<br>
 
 
 # CosMx_Lite 
