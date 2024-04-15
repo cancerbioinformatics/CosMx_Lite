@@ -1,0 +1,462 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+date: "13-Feb-2024"
+---
+
+# Introduction  
+Creation and analysis of CosMx data using Seuat object.  
+NOTE:  
+* image files are not loaded - only cell x/y position is used, not the polygonal shape  
+* enhancements are made to visualize the whole tissue instead of a single fov at a time, by adding x/y coordinates as a dimensionality reduction  
+* data has been pre-processed in an earlier script using flat files as input 
+
+The script combines information from the Xenium and CosMx pipelines found in Seurat tutorial:  
+https://satijalab.org/seurat/articles/seurat5_spatial_vignette_2#overview
+
+
+# Setup  
+## Libraries  
+```{r}
+library("dplyr")
+library("Seurat")
+library("patchwork")
+library("ggplot2")
+library("clustree")
+```
+
+## Data  
+```{r}
+expMat = readRDS("../input/GEX_only_genes_and_NegPrb_for_Seurat.RDS")
+expMat[1:5,1:5]
+```
+
+```{r}
+metadata = readRDS("../input/metadata_for_Seurat.RDS")
+head(metadata)
+```
+
+# Preprocessing  
+Selecting only `area_01` for this analysis  
+```{r}
+metadata = metadata %>% filter(region =="area_01")
+expMat = expMat[rownames(metadata),]
+```
+
+Visualization of cells based on their attributes
+Size (Area) 
+```{r}
+ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=log2(Area))) + 
+  geom_point(size=0.01) + 
+  theme_minimal() + scale_colour_gradientn(colours = c("grey50", "blue", "yellow", "red")) + 
+  theme(legend.position="right") + ggtitle("Area (log2)")
+```
+
+
+DAPI staining
+```{r}
+ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=log2(Mean.CD45))) + 
+  geom_point(size=0.01) + 
+  theme_minimal() + scale_colour_gradientn(colours = c("grey50", "yellow", "purple")) + 
+  theme(legend.position="right") + ggtitle("Mean.CD45 (log2)")
+
+ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=Mean.CD45)) + 
+  geom_point(size=0.01) + 
+  theme_minimal() + scale_colour_gradientn(colours = c("grey50", "yellow", "purple")) + 
+  theme(legend.position="right") + ggtitle("Mean.CD45")
+```
+
+# Analysis  
+```{r}
+seu <- CreateSeuratObject(counts = t(expMat), project = "CosMx", meta.data = metadata, min.cells = 3, min.features = 1)
+seu
+```
+```{r}
+Idents(seu) = "LN_area_01"
+```
+
+```{r}
+seu[["percent.NegPrb"]] <- PercentageFeatureSet(seu, pattern = "^Neg.")
+```
+```{r}
+VlnPlot(seu, features = c("nFeature_RNA", "nCount_RNA", "percent.NegPrb"), ncol = 3, pt.size = 0)
+```
+```{r}
+hist(seu$nFeature_RNA, breaks = 100, main = "nFeature_RNA")
+abline(v=10, col="red", lwd=3)
+```
+```{r}
+hist(seu$percent.NegPrb, breaks = 100, main = "NegPrb")
+abline(v=5, col="red", lwd=3)
+```
+
+```{r}
+plot1 <- FeatureScatter(seu, feature1 = "nCount_RNA", feature2 = "percent.NegPrb")
+plot2 <- FeatureScatter(seu, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+plot1 + plot2
+```
+At the moment Seurat does not filter out any cells, however keeping cells with 1 gene creates an "empty" cluster  
+```{r}
+seu <- subset(seu, subset = nFeature_RNA >= 10 & percent.NegPrb <= 5)
+seu
+```
+
+Removing NegPrb from the genes list:  
+```{r}
+all_genes <- rownames(GetAssayData(seu, assay = "RNA"))
+all_genes_no_NegPrb = all_genes[-grep("NegPrb", all_genes)]
+seu <- subset(seu, features = all_genes_no_NegPrb)
+```
+
+## Normalization/transformation  
+```{r}
+seu <- SCTransform(seu)
+```
+
+PCA  
+```{r}
+seu = RunPCA(seu, features = rownames(seu))
+print(seu[["pca"]], dims = 1:5, nfeatures = 5)
+```
+
+```{r}
+DimPlot(seu, reduction = "pca", raster=FALSE)
+```
+
+```{r}
+npcs = 20
+ElbowPlot(seu, ndims = 50) + 
+  geom_vline(xintercept = npcs, linetype="dotted", color = "red", size=1) + 
+  geom_hline(yintercept = seu@reductions$pca@stdev[npcs], linetype="dotted", color = "red", size=1)
+```
+```{r}
+DimHeatmap(seu, dims = 1, cells = 500, balanced = TRUE)
+DimHeatmap(seu, dims = 1:15, cells = 500, balanced = TRUE)
+```
+UMAP and clustering
+```{r}
+seu <- RunUMAP(seu, dims = 1:20)
+seu <- FindNeighbors(seu, reduction = "pca", dims = 1:20)
+
+seu <- FindClusters(seu, resolution = 0.1)
+seu <- FindClusters(seu, resolution = 0.15)
+seu <- FindClusters(seu, resolution = 0.2)
+seu <- FindClusters(seu, resolution = 0.3)
+seu <- FindClusters(seu, resolution = 0.4)
+seu <- FindClusters(seu, resolution = 0.5)
+seu <- FindClusters(seu, resolution = 0.6)
+```
+```{r}
+clustree(seu, prefix = "SCT_snn_res.")
+```
+
+UMAP visualizations  
+```{r}
+p1 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.1") + NoLegend()
+p2 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.15") + NoLegend()
+p3 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.2") + NoLegend()
+p4 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.3") + NoLegend()
+p5 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.4") + NoLegend()
+p6 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.5") + NoLegend()
+p7 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.6") + NoLegend()
+
+wrap_plots(p1,p2,p3,p4,p5,p6,p7,
+           ncol=4)
+```
+Selecting resolution of 0.2 as default  
+```{r}
+Idents(seu) = seu$SCT_snn_res.0.2
+seu$seurat_clusters = seu$SCT_snn_res.0.2
+```
+
+```{r}
+DimPlot(seu, reduction = "umap", label=T, cols="glasbey", raster=FALSE)
+```
+
+```{r}
+VlnPlot(seu, features = c("nFeature_RNA", "nCount_RNA"), ncol = 1, pt.size = 0, group.by = "seurat_clusters")
+```
+
+```{r}
+combined_list_immune = c(
+  "PTPRC", # CD45
+  "CD2", "CD3D", "CD3E", "CD3G", "CD4", "FOXP3", "CD8A", "CD8B", # T cells
+  "FCGR3A", "NCAM1", "KLRD1", "KIR2DL3", # NK cells
+  "BLNK", "CD19", "TCL1A", "MS4A1", "CD79A", "CD79B", "CD27",# B cells
+  "CD38", "SDC1", "JCHAIN", # plasma cells
+  "IGHD", "IGHM", "IGHE", "IGHG1", "IGHG2", "IGHG3", "IGHG4", "IGHA1", "IGHA2",
+  "LAMP3", "CD14", "CD68", "CD163", "CSF1R", "ITGAM", "ITGAX" # mono/macrophages
+)
+
+DotPlot(seu, features =combined_list_immune,
+        cluster.idents = T,
+        dot.scale = 6) + 
+  theme_classic() + coord_flip() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+seu.markers <- FindAllMarkers(seu, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+seu.markers %>%
+    group_by(cluster) %>%
+    slice_max(n = 2, order_by = avg_log2FC)
+```
+```{r}
+seu.markers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subset(seu, downsample = 100), features = top10$gene) + NoLegend()
+```
+
+```{r}
+VlnPlot(seu, features = c("JUN", "FOS", "IGHG1", "LAMP3"), ncol = 2, raster = FALSE)
+
+```
+Annotation  
+```{r}
+seu$coarse_annotation = "UNK"
+seu$coarse_annotation[seu$seurat_clusters %in% c(10)] = "plasma_cells"
+seu$coarse_annotation[seu$seurat_clusters %in% c(0, 5)] = "mem_B_cells"
+seu$coarse_annotation[seu$seurat_clusters %in% c(9)] = "mixed"
+seu$coarse_annotation[seu$seurat_clusters %in% c(7)] = "naive_B_cells"
+seu$coarse_annotation[seu$seurat_clusters %in% c(1)] = "T_cells"
+seu$coarse_annotation[seu$seurat_clusters %in% c(4)] = "DC"
+seu$coarse_annotation[seu$seurat_clusters %in% c(2, 3)] = "myeloid"
+
+seu$coarse_annotation[seu$seurat_clusters %in% c(6)] = "muscle/mixed"
+seu$coarse_annotation[seu$seurat_clusters %in% c(8)] = "muscle"
+
+table(seu$coarse_annotation, seu$SCT_snn_res.0.2)
+
+DimPlot(seu, reduction = "umap", cols="glasbey", raster=FALSE, group.by = "coarse_annotation")
+```
+```{r}
+Idents(seu) = seu$coarse_annotation
+seu.markers <- FindAllMarkers(seu, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+seu.markers %>%
+    group_by(cluster) %>%
+    slice_max(n = 2, order_by = avg_log2FC)
+```
+```{r}
+seu.markers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(subset(seu, downsample = 100), features = top10$gene) + NoLegend()
+```
+
+
+
+
+
+# Ading CosMx coordinates as a global FOV  
+NOTE: x and y coordinates need to be swapped to make it orient the tissue correctly. Therefore, the axis annotation is not correct.  
+The benefit includes keeping the image ratio. 
+```{r}
+cell_centroid_df = data.frame(y = seu$CenterX_global_px, x = seu$CenterY_global_px, cell = colnames(seu))
+centroid_data = list("centroids" = CreateCentroids(cell_centroid_df))
+coords = CreateFOV(coords = centroid_data, type = c("centroids"), assay = "RNA")
+
+seu[["global"]] = coords
+```
+```{r}
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
+```
+## Showing specific clusters only  
+```{r}
+seu$naive_B_cells = "other"
+seu$naive_B_cells[seu$coarse_annotation %in% c("naive_B_cells")] = "naive_B_cells"
+seu$naive_B_cells = factor(seu$naive_B_cells, levels=c("naive_B_cells", "other"))
+
+seu$mem_B_cells = "other"
+seu$mem_B_cells[seu$coarse_annotation %in% c("mem_B_cells")] = "mem_B_cells"
+seu$mem_B_cells = factor(seu$mem_B_cells, levels=c("mem_B_cells", "other"))
+
+seu$myeloid = "other"
+seu$myeloid[seu$coarse_annotation %in% c("myeloid")] = "myeloid"
+seu$myeloid = factor(seu$myeloid, levels=c("myeloid", "other"))
+
+seu$T_cells = "other"
+seu$T_cells[seu$coarse_annotation %in% c("T_cells")] = "T_cells"
+seu$T_cells = factor(seu$T_cells, levels=c("T_cells", "other"))
+
+seu$plasma_cells = "other"
+seu$plasma_cells[seu$coarse_annotation %in% c("plasma_cells")] = "plasma_cells"
+seu$plasma_cells = factor(seu$plasma_cells, levels=c("plasma_cells", "other"))
+
+seu$DC = "other"
+seu$DC[seu$coarse_annotation %in% c("DC")] = "DC"
+seu$DC = factor(seu$DC, levels=c("DC", "other"))
+
+seu$muscle = "other"
+seu$muscle[seu$coarse_annotation %in% c("muscle")] = "muscle"
+seu$muscle = factor(seu$muscle, levels=c("muscle", "other"))
+```
+```{r}
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "naive_B_cells") + ggtitle("naive_B_cells")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "mem_B_cells") + ggtitle("mem_B_cells")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "myeloid") + ggtitle("myeloid")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "T_cells") + ggtitle("T_cells")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "plasma_cells") + ggtitle("plasma_cells")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "DC") + ggtitle("DC")
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "muscle") + ggtitle("muscle")
+
+p1 = ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "mem_B_cells") + ggtitle("mem_B_cells") 
+p2 = ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "DC") + ggtitle("DC")
+p3 = ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "T_cells") + ggtitle("T_cells")
+p4 = ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), size = 0.75, group.by = "myeloid") + ggtitle("myeloid")
+
+wrap_plots(p1,p2,p3,p4, ncol=2)
+```
+
+
+
+# Ading CosMx coordinates as "reduction"  
+```{r}
+coordinates = as.matrix(data.frame(CosMx_1 = seu$CenterX_global_px, CosMx_2 = seu$CenterY_global_px))
+seu[['CosMx']] <- CreateDimReducObject(embeddings = coordinates, key = "CosMx_", global = T, assay = "RNA")
+```
+
+```{r}
+DimPlot(seu, reduction = "CosMx", cols = "alphabet") + theme_void() +
+  ggtitle("Area_01 - clusters")
+
+DimPlot(seu, reduction = "CosMx", cols = "alphabet", group.by = "fov", label=T, label.box = T) + theme_void() +
+  ggtitle("Area_01 - fovs") + NoLegend()
+```
+Zooming into a specific list of FOVs:
+```{r}
+fov_of_interest = c(28, 29, 33, 34, 36, 37) 
+DimPlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", group.by = "fov", label=T, label.box = T) + theme_void()
+DimPlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", cols = "glasbey", pt.size = 1) + theme_void()
+
+ImageDimPlot(seu[, seu$fov %in% fov_of_interest], fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
+```
+
+Genes over the whole tissue/subset of fovs:  
+```{r}
+FeaturePlot(seu, reduction = "CosMx", features = c("CD19", "LAMP3"), ncol=2, order = T, raster = FALSE)
+FeaturePlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", features = c("CD19", "LAMP3"), ncol=2, order = T) 
+
+FeaturePlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", features = c("CD19", "CD79A", "IGHG1", "CD3E", "LAMP3", "CD68"), ncol=3, order = T, pt.size = 1) 
+```
+```{r}
+p1 = FeaturePlot(seu, reduction = "CosMx", features = c("CCL19", "CCL21"), ncol=2, order = T, pt.size = 0.5) 
+p2 = FeaturePlot(seu, reduction = "umap", features = c("CCL19", "CCL21"), ncol=2, order = T, pt.size = 0.5) 
+
+wrap_plots(p1, p2, ncol=1)
+```
+
+```{r}
+FeaturePlot(seu, reduction = "CosMx", features = c("EPCAM"), order = T, pt.size = 0.5) + FeaturePlot(seu, reduction = "umap", features = c("EPCAM"), order = T, pt.size = 0.5) 
+```
+
+
+
+Co-expression of two genes  
+```{r}
+FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order = T, raster = FALSE)
+FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), raster = FALSE)
+FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE)
+FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE)
+```
+Comparing global fov vs coordinates added as a reduction method:   
+```{r}
+ImageFeaturePlot(seu, fov = "global", features = "CD19", max.cutoff = "q95")
+FeaturePlot(seu, reduction = "CosMx", features = "CD19", order = T, raster = FALSE)
+```
+Subset
+```{r}
+ImageFeaturePlot(seu[, seu$fov %in% fov_of_interest], fov = "global", features = "CD19", max.cutoff = "q95")
+FeaturePlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", features = "CD19", order = T, raster = FALSE)
+```
+
+```{r}
+print(x)
+```
+
+
+```{r}
+# saveRDS(seu, "../output/Seurat_object_area_01_initial_analysis.RDS")
+```
+```{r}
+seu = readRDS("../output/Seurat_object_area_01_initial_analysis.RDS")
+#ImageDimPlot(seu2[, seu2$fov %in% fov_of_interest], fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
+ImageDimPlot(seu, fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
+```
+
+```{r}
+FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order = T, raster = FALSE)
+FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), raster = FALSE)
+FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE, cols = c("grey50","red", "blue"))
+FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE, cols = c("grey50","red", "blue"))
+```
+
+
+# CCC  
+```{r}
+library("liana")
+```
+```{r}
+t1 = Sys.time()
+mel_all_test = liana_wrap(seu, 
+                       method = c("natmi", "connectome", "logfc", "sca", "cellphonedb"),
+                       source = c("Consensus"))
+t2 = Sys.time()
+t2-t1
+```
+```{r}
+seu_cell_types = as.vector(names(table(Idents(seu))))
+seu_cell_types
+```
+```{r}
+# We can aggregate these results into a tibble with consensus ranks
+mel_all_test <- mel_all_test %>%
+  liana_aggregate()
+
+dplyr::glimpse(mel_all_test)
+```
+```{r}
+seu_cell_types
+```
+# analysis  
+saving the results
+```{r}
+# saveRDS(mel_all_test, "../output/liana_results_post_treatment_immune_cells_coarse_B.RDS")
+# #mel_all_test = readRDS("../output/liana_results_post_treatment_immune_cells_coarse_B.RDS")
+# mel_all_cell_types = unique(mel_all_test$source)
+```
+
+
+```{r}
+mel_all_test %>%
+  liana_dotplot(source_groups = seu_cell_types,
+                target_groups = seu_cell_types,
+                ntop = 30) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+
+```{r}
+mel_all_trunc <- mel_all_test %>%
+   # only keep interactions concordant between methods
+  filter(aggregate_rank <= 0.01) # note that these pvals are already corrected
+
+heat_freq(mel_all_trunc)
+```
+```{r}
+p <- chord_freq(mel_all_trunc,
+                source_groups = NULL,
+                target_groups = NULL)
+```
+```{r}
+pdf("../output/ccc_circos.pdf",height = 4, width = 4)
+p
+dev.off()
+```
+
+```{r}
+getwd()
+```
+
