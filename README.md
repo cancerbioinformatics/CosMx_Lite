@@ -3,8 +3,7 @@ Authors: Béibhinn O Hora, Roman Laddach, Jelmar Quist, Rosamund Nuamah, Anita G
 Date: 15-Apr-2024
 
 
-![CoxMx Analysis with the *Spatial Biology Facility* at King's College London](https://github.com/cancerbioinformatics/CosMx_Lite/tree/main/images/cosmx_lab_.png?raw=true)
-
+![CoxMx Analysis with the *Spatial Biology Facility* at King's College London](https://github.com/cancerbioinformatics/CosMx_Lite/tree/main/images/cosmx_lab_.png?)
 
 # Welcome
 
