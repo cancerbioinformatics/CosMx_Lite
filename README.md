@@ -7,7 +7,7 @@ Date: 15-Apr-2024
 
 # Welcome
 
-Nanostring’s CosMx Spatial Molecular Imager (SMI) allows researchers to gain insights into spatially resolved gene expression at single cell resolution. However, a single experiment can generate a dataset containing information for over 1 million cells, across 1,000 genes. After cell segmentation, cell shape and size are stored as polygons. There is additional image data containing protein staining onto which the cell polygons with transcript information can be overlaid. This results in a high dimensional dataset, which due to size and complexity imposes a large computational burden. 
+Nanostring’s CosMx Spatial Molecular Imager (SMI) allows researchers to gain insights into spatially resolved gene expression at single cell resolution. However, a single experiment can generate a dataset containing information for over 1 million cells, across up to 6,000 genes. After cell segmentation, cell shape and size are stored as polygons. There is additional image data containing protein staining onto which the cell polygons with transcript information can be overlaid. This results in a high dimensional dataset, which due to size and complexity imposes a large computational burden. 
 
 The most common approaches for CosMx data analysis involve the use of a high-performance computing (HPC) cluster, thus limiting access to analysis. Data can also be analysed within Nanostring's spatial informatics platform AtoMx, however there are limitations regarding integration with additional tools and pipelines needed for downstream analysis. 
 
