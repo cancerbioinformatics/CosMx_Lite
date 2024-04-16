@@ -1,9 +1,9 @@
 ---
-title: "R Notebook"
+title: "02_basic_Seurat_analysis_CosMx.Rmd"
 output:
   pdf_document: default
   html_notebook: default
-date: "13-Feb-2024"
+date: "16-Apr-2024"
 ---
 
 # Introduction  
@@ -69,24 +69,36 @@ ggplot(metadata, aes(x=CenterX_global_px, y=CenterY_global_px, colour=Mean.CD45)
 ```
 
 # Analysis  
+Create a Seurat object from flat files
 ```{r}
 seu <- CreateSeuratObject(counts = t(expMat), project = "CosMx", meta.data = metadata, min.cells = 3, min.features = 1)
 seu
 ```
+Specifying the identity of the Seurat object
 ```{r}
 Idents(seu) = "LN_area_01"
 ```
-
+## Quality control  
+Calculating the % of negative probes per cell
 ```{r}
 seu[["percent.NegPrb"]] <- PercentageFeatureSet(seu, pattern = "^Neg.")
 ```
+Visualization of QC metrics. Points are removed as CosMx datasets can contain over 1 million cells and may hide the violin plot.  
 ```{r}
 VlnPlot(seu, features = c("nFeature_RNA", "nCount_RNA", "percent.NegPrb"), ncol = 3, pt.size = 0)
 ```
+We recommend basic filtering. Main purposes of the filtering:  
+* remove cells with very few genes which will make it difficult to annotate  
+* remove cells with high levels of negative probes
+
+We also suggest to investigate the area for potential filtering.  
+
+The distribution of nFeature - suggested cutoff here is 10:  
 ```{r}
 hist(seu$nFeature_RNA, breaks = 100, main = "nFeature_RNA")
 abline(v=10, col="red", lwd=3)
 ```
+The distribution of negative probes percentage - suggested cutoff here is 5%:  
 ```{r}
 hist(seu$percent.NegPrb, breaks = 100, main = "NegPrb")
 abline(v=5, col="red", lwd=3)
@@ -97,13 +109,14 @@ plot1 <- FeatureScatter(seu, feature1 = "nCount_RNA", feature2 = "percent.NegPrb
 plot2 <- FeatureScatter(seu, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 plot1 + plot2
 ```
-At the moment Seurat does not filter out any cells, however keeping cells with 1 gene creates an "empty" cluster  
+At the moment Seurat does not filter out any cells, however keeping cells with 1 gene creates an "empty" cluster which will be difficult to annotate. This is partially associated with the CosMx panel containing 1000 genes (6k plex may improve it) and the tissue containing cells which may not be very well represented by the panel.  
+We usually see a removal of 5-15% of cells depending on the dataset.  
 ```{r}
 seu <- subset(seu, subset = nFeature_RNA >= 10 & percent.NegPrb <= 5)
 seu
 ```
 
-Removing NegPrb from the genes list:  
+Removing NegPrb from the genes list - they were useful for QC metrics, however they may affect downstream analysis.  
 ```{r}
 all_genes <- rownames(GetAssayData(seu, assay = "RNA"))
 all_genes_no_NegPrb = all_genes[-grep("NegPrb", all_genes)]
@@ -111,20 +124,22 @@ seu <- subset(seu, features = all_genes_no_NegPrb)
 ```
 
 ## Normalization/transformation  
+We found a better clustering performance when using Seurat's SCTransform when compared to log normalization after library size normalization to 10000 transcripts.
 ```{r}
 seu <- SCTransform(seu)
 ```
 
-PCA  
+Principal component analysis  
 ```{r}
 seu = RunPCA(seu, features = rownames(seu))
 print(seu[["pca"]], dims = 1:5, nfeatures = 5)
 ```
-
+First two principal components show variance in the dataset.  
+For any dataset containing >100,000 cells, the default visualization will not work. Setting the flag `raster=FALSE` will allow for visualization to work as expected.  
 ```{r}
 DimPlot(seu, reduction = "pca", raster=FALSE)
 ```
-
+The elbow plot for all 50 PCs shows a plateu at around 20 PCs:
 ```{r}
 npcs = 20
 ElbowPlot(seu, ndims = 50) + 
@@ -135,7 +150,8 @@ ElbowPlot(seu, ndims = 50) +
 DimHeatmap(seu, dims = 1, cells = 500, balanced = TRUE)
 DimHeatmap(seu, dims = 1:15, cells = 500, balanced = TRUE)
 ```
-UMAP and clustering
+## UMAP and clustering  
+We are using first 20 PCs for to create UMAP and find neighbors. For the community detection we suggest to use a range of resolutions and find those which represent biologically meaningful clusters. With CosMx data we suggest to use resolution < 1.0.  
 ```{r}
 seu <- RunUMAP(seu, dims = 1:20)
 seu <- FindNeighbors(seu, reduction = "pca", dims = 1:20)
@@ -148,11 +164,13 @@ seu <- FindClusters(seu, resolution = 0.4)
 seu <- FindClusters(seu, resolution = 0.5)
 seu <- FindClusters(seu, resolution = 0.6)
 ```
+
+Clustree shows the relationship between communities and how the cell membership changes with the resolution. At 0.1 five clusters are present, while at the resolution of 0.6 we see 19 clusters. In general we can see five main coarse cell populations in this dataset.  
 ```{r}
 clustree(seu, prefix = "SCT_snn_res.")
 ```
 
-UMAP visualizations  
+UMAP visualizations at different resolutions  
 ```{r}
 p1 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.1") + NoLegend()
 p2 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, group.by = "SCT_snn_res.0.15") + NoLegend()
@@ -165,20 +183,26 @@ p7 = DimPlot(seu, reduction = "umap", label=T, cols="alphabet", raster=FALSE, gr
 wrap_plots(p1,p2,p3,p4,p5,p6,p7,
            ncol=4)
 ```
-Selecting resolution of 0.2 as default  
+Selecting resolution of 0.2 and specifying it as default:  
 ```{r}
 Idents(seu) = seu$SCT_snn_res.0.2
 seu$seurat_clusters = seu$SCT_snn_res.0.2
 ```
-
+UMAP at resolution of 0.2  
 ```{r}
 DimPlot(seu, reduction = "umap", label=T, cols="glasbey", raster=FALSE)
 ```
-
+The visualization of nFeature and nCount allows to identify clusters with better/lower representation by the CosMx panel.  
 ```{r}
 VlnPlot(seu, features = c("nFeature_RNA", "nCount_RNA"), ncol = 1, pt.size = 0, group.by = "seurat_clusters")
 ```
+## Cell annotation  
+This is the final step of the initial workflow. Once cells are annotated, downstream analysis will have a biological meaning. We suggest to use a combination of three approaches:  
+* list of custom known transcriptomic markers - protein level do not always correspond to transcriptome
+* list of differentially expressed genes - initially 1 vs all, but later specific cluster combinations  
+* spatial location within the tissue - this is the exciting part where spatial transcriptomics provide additional dimension  
 
+The lymph node dataset contains immune populations (mainly B and T cells), thus initially using immune marker list. If genes are not part of the CosMx panel, they will not show in visualizations:  
 ```{r}
 combined_list_immune = c(
   "PTPRC", # CD45
@@ -194,29 +218,34 @@ DotPlot(seu, features =combined_list_immune,
         cluster.idents = T,
         dot.scale = 6) + 
   theme_classic() + coord_flip() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ggtitle("Immune markers")
 ```
+The dot plot identifies clusters enriched in B cells.  
 
+Differentially expressed genes  
 ```{r}
 seu.markers <- FindAllMarkers(seu, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
 seu.markers %>%
     group_by(cluster) %>%
     slice_max(n = 2, order_by = avg_log2FC)
 ```
+Due to high number of cells we limit the heatmp to 100 cells per cluster, otherwise the heatmap will not generate:  
 ```{r}
 seu.markers %>%
     group_by(cluster) %>%
     top_n(n = 10, wt = avg_log2FC) -> top10
 DoHeatmap(subset(seu, downsample = 100), features = top10$gene) + NoLegend()
 ```
+Clear B cell and plasma clusters can be identified.  
 
+Violin plots for some of the markers of interest from the list of DEGs:  
 ```{r}
 VlnPlot(seu, features = c("JUN", "FOS", "IGHG1", "LAMP3"), ncol = 2, raster = FALSE)
 
 ```
-Annotation  
+Initial annotation based on the markers. This is later projected onto the tissue.
 ```{r}
-seu$coarse_annotation = "UNK"
+seu$coarse_annotation = "UNK" # a new "empty" column  
 seu$coarse_annotation[seu$seurat_clusters %in% c(10)] = "plasma_cells"
 seu$coarse_annotation[seu$seurat_clusters %in% c(0, 5)] = "mem_B_cells"
 seu$coarse_annotation[seu$seurat_clusters %in% c(9)] = "mixed"
@@ -224,14 +253,12 @@ seu$coarse_annotation[seu$seurat_clusters %in% c(7)] = "naive_B_cells"
 seu$coarse_annotation[seu$seurat_clusters %in% c(1)] = "T_cells"
 seu$coarse_annotation[seu$seurat_clusters %in% c(4)] = "DC"
 seu$coarse_annotation[seu$seurat_clusters %in% c(2, 3)] = "myeloid"
-
 seu$coarse_annotation[seu$seurat_clusters %in% c(6)] = "muscle/mixed"
 seu$coarse_annotation[seu$seurat_clusters %in% c(8)] = "muscle"
 
-table(seu$coarse_annotation, seu$SCT_snn_res.0.2)
-
 DimPlot(seu, reduction = "umap", cols="glasbey", raster=FALSE, group.by = "coarse_annotation")
 ```
+Investigating DEGs after combining clusters for the annotation.  
 ```{r}
 Idents(seu) = seu$coarse_annotation
 seu.markers <- FindAllMarkers(seu, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
@@ -245,9 +272,6 @@ seu.markers %>%
     top_n(n = 10, wt = avg_log2FC) -> top10
 DoHeatmap(subset(seu, downsample = 100), features = top10$gene) + NoLegend()
 ```
-
-
-
 
 
 # Ading CosMx coordinates as a global FOV  
@@ -264,6 +288,8 @@ seu[["global"]] = coords
 ImageDimPlot(seu, fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
 ```
 ## Showing specific clusters only  
+
+A way to show a specifi cluster only:  
 ```{r}
 seu$naive_B_cells = "other"
 seu$naive_B_cells[seu$coarse_annotation %in% c("naive_B_cells")] = "naive_B_cells"
@@ -310,9 +336,8 @@ p4 = ImageDimPlot(seu, fov = "global", axes = TRUE, cols = c("red", "grey20"), s
 wrap_plots(p1,p2,p3,p4, ncol=2)
 ```
 
-
-
 # Ading CosMx coordinates as "reduction"  
+Another way to project information on the tissue. This allows for more visulization options than the previous approach, e.g. co-expression.  
 ```{r}
 coordinates = as.matrix(data.frame(CosMx_1 = seu$CenterX_global_px, CosMx_2 = seu$CenterY_global_px))
 seu[['CosMx']] <- CreateDimReducObject(embeddings = coordinates, key = "CosMx_", global = T, assay = "RNA")
@@ -348,12 +373,6 @@ p2 = FeaturePlot(seu, reduction = "umap", features = c("CCL19", "CCL21"), ncol=2
 wrap_plots(p1, p2, ncol=1)
 ```
 
-```{r}
-FeaturePlot(seu, reduction = "CosMx", features = c("EPCAM"), order = T, pt.size = 0.5) + FeaturePlot(seu, reduction = "umap", features = c("EPCAM"), order = T, pt.size = 0.5) 
-```
-
-
-
 Co-expression of two genes  
 ```{r}
 FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order = T, raster = FALSE)
@@ -366,97 +385,8 @@ Comparing global fov vs coordinates added as a reduction method:
 ImageFeaturePlot(seu, fov = "global", features = "CD19", max.cutoff = "q95")
 FeaturePlot(seu, reduction = "CosMx", features = "CD19", order = T, raster = FALSE)
 ```
-Subset
+Subset gene epxression  
 ```{r}
 ImageFeaturePlot(seu[, seu$fov %in% fov_of_interest], fov = "global", features = "CD19", max.cutoff = "q95")
 FeaturePlot(seu[, seu$fov %in% fov_of_interest], reduction = "CosMx", features = "CD19", order = T, raster = FALSE)
 ```
-
-```{r}
-print(x)
-```
-
-
-```{r}
-# saveRDS(seu, "../output/Seurat_object_area_01_initial_analysis.RDS")
-```
-```{r}
-seu = readRDS("../output/Seurat_object_area_01_initial_analysis.RDS")
-#ImageDimPlot(seu2[, seu2$fov %in% fov_of_interest], fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
-ImageDimPlot(seu, fov = "global", axes = TRUE, cols = "glasbey", size = 0.75)
-```
-
-```{r}
-FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order = T, raster = FALSE)
-FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), raster = FALSE)
-FeaturePlot(seu, reduction = "umap", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE, cols = c("grey50","red", "blue"))
-FeaturePlot(seu, reduction = "CosMx", features = c("IGHM", "IGHD"), order=T, blend = T, raster = FALSE, cols = c("grey50","red", "blue"))
-```
-
-
-# CCC  
-```{r}
-library("liana")
-```
-```{r}
-t1 = Sys.time()
-mel_all_test = liana_wrap(seu, 
-                       method = c("natmi", "connectome", "logfc", "sca", "cellphonedb"),
-                       source = c("Consensus"))
-t2 = Sys.time()
-t2-t1
-```
-```{r}
-seu_cell_types = as.vector(names(table(Idents(seu))))
-seu_cell_types
-```
-```{r}
-# We can aggregate these results into a tibble with consensus ranks
-mel_all_test <- mel_all_test %>%
-  liana_aggregate()
-
-dplyr::glimpse(mel_all_test)
-```
-```{r}
-seu_cell_types
-```
-# analysis  
-saving the results
-```{r}
-# saveRDS(mel_all_test, "../output/liana_results_post_treatment_immune_cells_coarse_B.RDS")
-# #mel_all_test = readRDS("../output/liana_results_post_treatment_immune_cells_coarse_B.RDS")
-# mel_all_cell_types = unique(mel_all_test$source)
-```
-
-
-```{r}
-mel_all_test %>%
-  liana_dotplot(source_groups = seu_cell_types,
-                target_groups = seu_cell_types,
-                ntop = 30) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
-
-
-
-```{r}
-mel_all_trunc <- mel_all_test %>%
-   # only keep interactions concordant between methods
-  filter(aggregate_rank <= 0.01) # note that these pvals are already corrected
-
-heat_freq(mel_all_trunc)
-```
-```{r}
-p <- chord_freq(mel_all_trunc,
-                source_groups = NULL,
-                target_groups = NULL)
-```
-```{r}
-pdf("../output/ccc_circos.pdf",height = 4, width = 4)
-p
-dev.off()
-```
-
-```{r}
-getwd()
-```
-
