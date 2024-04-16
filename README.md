@@ -279,7 +279,7 @@ Expression matrix with raw counts of genes for each identified cell. Apart from 
 - negative probes
 - probes associated with the fiducial frame (SystemControl)
 
-### Raw files preprocessing *(ASK ROMAN ABOUT THIS)
+### Raw files preprocessing 
 We recommend pre-processing the raw files to enhance the downstream analysis. Our suggestions are part of the 00_flat_file_preprocessing_v2.R script. Summary of the changes to the files:
 
 - fov_positions_file.csv: updating the column name and adding the position of FOV in px
