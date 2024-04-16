@@ -83,7 +83,6 @@ So, you may find yourself wondering, which technology is best suited for my anal
 *Image and Analogy courtesy of Isobelle Wall, Grigoriadis Team, King's College London*
 
 
-
 Bulk RNA sequencing can be like choosing a property based on overall neighborhood statistics. Just as you might analyze an entire neighborhood's average property value, the population size, or demographic composition, bulk RNA sequencing provides a global snapshot of gene expression in a sample. On the other hand, scRNA-seq involves inspecting each individual property in detail. Just as you might meticulously assess the characteristics of a specific house or apartment, scRNA-seq allows researchers to delve into the gene expression profiles of individual cells within a sample. This may allow for the identification of rare cell types or help in the understanding of heterogeneity within a cell population.
 
 Spatial transcriptomics, the newest addition to the toolkit, can be like choosing a property based on its location within London. Just as the location of a property can significantly impact its value and potential, spatial transcriptomics allows researchers to visualize gene expression within the context of tissue or cellular architecture. This is particularly useful when studying the spatial organization of cells in a tissue, unravelling intricate interactions between neighbouring cells, and understanding the spatial distribution of specific gene expression patterns.
@@ -103,8 +102,8 @@ These technologies can be categorised into three primary groups:
 3. **Next Generation Sequencing (NGS)**: Compartmentalizes tissue section and the entire transcriptome of each section is uniquely barcoded and sequenced. Examples: Visium, GeoMx
 
 
-![*Source: Rao, A., Barkley, D., França, G.S. et al. Exploring tissue architecture using spatial transcriptomics. Nature 596, 211–220 (2021)*](images/roa_et_al.png)
-
+![](images/roa_et_al.png)
+*Image source: Rao, A., Barkley, D., França, G.S. et al. Exploring tissue architecture using spatial transcriptomics. Nature 596, 211–220 (2021). https://doi.org/10.1038/s41586-021-03634-9*
 
 ![]()
 
