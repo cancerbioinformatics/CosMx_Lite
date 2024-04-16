@@ -360,6 +360,9 @@ We strive to consistently enhance and broaden the scope of our guide, and welcom
 
 If you are interested in finding out more about our facility, please contact us at SBF@kcl.ac.uk.
 
+## License 
+
+The source code for the site is licensed under the MIT license, which you can find in the MIT-LICENSE.txt file.
 
 
 
