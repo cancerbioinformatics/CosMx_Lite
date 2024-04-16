@@ -80,7 +80,7 @@ So, you may find yourself wondering, which technology is best suited for my anal
 
 
 ![*Image and Analogy curtesy of Isobelle Wall, Grigoriadis Team, King's College London*](images/IzzI_metaphor.png)
-*Image and Analogy curtesy of Isobelle Wall, Grigoriadis Team, King's College London*
+*Image and Analogy courtesy of Isobelle Wall, Grigoriadis Team, King's College London*
 
 
 
