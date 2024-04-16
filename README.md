@@ -63,8 +63,6 @@ Every cell within the human body holds a captivating narrative, woven with intri
 Within this chapter, we learn that information guiding the cell is stored in functional units known as genes within our DNA. Through transcriptional and translational processes, this vital information encoded in genes is used to make proteins. Acting as an intermediary product between genes and proteins, mRNA facilitates the transmission of this essential genetic information. 
 
 ![*The Central Dogma of Molecular Biology*](images/central_dogma2.png)
-![]()
-
 
 The study of RNA transcripts, **collectively termed the transcriptome**, provides a snapshot of all the genes that are actively being expressed in a cell or a group of cells at a given moment. This has uncovered a wealth of information about gene expression patterns, cellular processes, and the regulatory mechanisms that govern various biological systems. 
 
@@ -82,8 +80,9 @@ So, you may find yourself wondering, which technology is best suited for my anal
 
 
 ![*Image and Analogy curtesy of Isobelle Wall, Grigoriadis Team, King's College London*](images/IzzI_metaphor.png)
+*Image and Analogy curtesy of Isobelle Wall, Grigoriadis Team, King's College London*
 
-![]()
+
 
 Bulk RNA sequencing can be like choosing a property based on overall neighborhood statistics. Just as you might analyze an entire neighborhood's average property value, the population size, or demographic composition, bulk RNA sequencing provides a global snapshot of gene expression in a sample. On the other hand, scRNA-seq involves inspecting each individual property in detail. Just as you might meticulously assess the characteristics of a specific house or apartment, scRNA-seq allows researchers to delve into the gene expression profiles of individual cells within a sample. This may allow for the identification of rare cell types or help in the understanding of heterogeneity within a cell population.
 
