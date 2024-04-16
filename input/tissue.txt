@@ -1,3 +1,5 @@
+CosMx experiment data of a lymph node
+
 Compressed files:
 - exprMat_file.csv
 - fov_positions_file.csv
